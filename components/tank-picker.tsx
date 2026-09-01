@@ -6,15 +6,20 @@ import type { Database } from "@/lib/database.types";
 
 type TankMaterial = Database["public"]["Enums"]["tank_material"];
 
-// 11.1 L kulüpte yaygın alüminyum tüp. Listede olmayan hacimler
-// "Diğer" ile girilir.
-const COMMON_SIZES = [10, 11.1, 12, 15];
+// Hacim ve o hacmin kulüpteki olağan malzemesi bir arada: 11.1 alüminyum,
+// gerisi çelik. Hacme dokunulunca malzeme de buna göre ayarlanıyor,
+// karacının ikinci bir dokunuş yapması gerekmiyor. Farklıysa malzeme
+// elle değiştirilebiliyor.
+const SIZES: { liters: number; material: TankMaterial }[] = [
+  { liters: 11.1, material: "aluminum" },
+  { liters: 10, material: "steel" },
+  { liters: 12, material: "steel" },
+  { liters: 15, material: "steel" },
+];
 
-// Malzeme önemli: alüminyum boşken pozitif yüzerlikli, çelik negatif.
-// Aynı hacimde bile ağırlık ~2 kg değişiyor.
 const MATERIALS: { value: TankMaterial; label: string }[] = [
-  { value: "steel", label: "Çelik" },
   { value: "aluminum", label: "Alüminyum" },
+  { value: "steel", label: "Çelik" },
 ];
 
 function Segment({
@@ -30,7 +35,8 @@ function Segment({
     <button
       type="button"
       onClick={onClick}
-      className={`h-12 rounded-lg border text-base font-medium transition-colors ${
+      // min-w-0: ızgara hücresi içeriğe göre genişleyip satırı taşırmasın
+      className={`h-12 min-w-0 rounded-lg border px-1 text-base font-medium whitespace-nowrap transition-colors ${
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "hover:bg-accent active:bg-accent"
@@ -41,38 +47,46 @@ function Segment({
   );
 }
 
-// Hacim ve malzeme ayrı geri çağırımlarla bildiriliyor. Tek bir
-// onChange({size, material}) olsaydı, art arda gelen iki dokunuştan
-// ikincisi render anında yakaladığı eski değeri geri yazardı.
+/**
+ * Değişiklikler kısmi olarak bildiriliyor ({ size } veya { material }).
+ * Tamamı gönderilseydi, art arda gelen iki dokunuştan ikincisi render
+ * anında yakaladığı eski değeri geri yazardı.
+ */
 export function TankPicker({
   size,
   material,
-  onSizeChange,
-  onMaterialChange,
+  onChange,
 }: {
   size: string;
   material: TankMaterial;
-  onSizeChange: (size: string) => void;
-  onMaterialChange: (material: TankMaterial) => void;
+  onChange: (patch: { size?: string; material?: TankMaterial }) => void;
 }) {
   const numericSize = Number(size);
-  const isCommon = COMMON_SIZES.includes(numericSize);
+  const isCommon = SIZES.some((option) => option.liters === numericSize);
 
   return (
     <div className="space-y-3">
       <Label className="text-base">Tüp</Label>
 
-      <div className="grid grid-cols-3 gap-2">
-        {COMMON_SIZES.map((option) => (
+      <div className="grid grid-cols-4 gap-2">
+        {SIZES.map((option) => (
           <Segment
-            key={option}
-            active={isCommon && numericSize === option}
-            onClick={() => onSizeChange(String(option))}
+            key={option.liters}
+            active={numericSize === option.liters}
+            onClick={() =>
+              onChange({
+                size: String(option.liters),
+                material: option.material,
+              })
+            }
           >
-            {option} L
+            {option.liters} L
           </Segment>
         ))}
-        <Segment active={!isCommon} onClick={() => onSizeChange("")}>
+      </div>
+
+      <div className="grid">
+        <Segment active={!isCommon} onClick={() => onChange({ size: "" })}>
           Diğer
         </Segment>
       </div>
@@ -85,7 +99,7 @@ export function TankPicker({
           max={50}
           step={0.1}
           value={size}
-          onChange={(event) => onSizeChange(event.target.value)}
+          onChange={(event) => onChange({ size: event.target.value })}
           placeholder="Hacim (L)"
           className="h-12 text-base md:text-base"
           autoComplete="off"
@@ -97,7 +111,7 @@ export function TankPicker({
           <Segment
             key={option.value}
             active={material === option.value}
-            onClick={() => onMaterialChange(option.value)}
+            onClick={() => onChange({ material: option.value })}
           >
             {option.label}
           </Segment>

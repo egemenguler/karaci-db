@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MemberSearch, type MemberOption } from "@/components/member-search";
 import { PressureInput } from "@/components/pressure-input";
 import { TankPicker } from "@/components/tank-picker";
@@ -36,8 +36,10 @@ export function StartDiveForm({
   const [leader, setLeader] = useState<MemberOption | null>(null);
 
   // Yeni üyede geçmiş yok; kulüpte en yaygın kurulum burada varsayılan.
-  const [size, setSize] = useState("12");
-  const [material, setMaterial] = useState<TankMaterial>("steel");
+  const [tank, setTank] = useState<{ size: string; material: TankMaterial }>({
+    size: "12",
+    material: "steel",
+  });
 
   const [weight, setWeight] = useState("");
   const [startPressure, setStartPressure] = useState("");
@@ -48,24 +50,34 @@ export function StartDiveForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Kişinin aynı tüp kurulumuyla yaptığı son dalışın ağırlığı.
-  async function fillSuggestedWeight(
-    memberId: string,
-    nextMaterial: TankMaterial,
-    nextSize: string,
-  ) {
-    const numericSize = Number(nextSize);
+  // Üye ya da tüp değişince, kişinin aynı kurulumla yaptığı son dalışın
+  // ağırlığı forma dolar. Tek yerde durduğu için hangi alanın önce
+  // değiştiğinin bir önemi kalmıyor.
+  useEffect(() => {
+    if (!member) return;
+
+    const numericSize = Number(tank.size);
     if (!Number.isFinite(numericSize) || numericSize <= 0) return;
 
-    const { data } = await supabase.rpc("suggested_weight", {
-      p_member_id: memberId,
-      p_tank_material: nextMaterial,
-      p_tank_size: numericSize,
-      p_twin: false,
-    });
+    let alive = true;
 
-    setWeight(data === null || data === undefined ? "" : String(data));
-  }
+    const run = async () => {
+      const { data } = await supabase.rpc("suggested_weight", {
+        p_member_id: member.id,
+        p_tank_material: tank.material,
+        p_tank_size: numericSize,
+        p_twin: false,
+      });
+      if (alive) {
+        setWeight(data === null || data === undefined ? "" : String(data));
+      }
+    };
+    run();
+
+    return () => {
+      alive = false;
+    };
+  }, [member, tank.size, tank.material]);
 
   async function handleMemberSelect(next: MemberOption | null) {
     setMember(next);
@@ -82,23 +94,10 @@ export function StartDiveForm({
       .limit(1)
       .maybeSingle();
 
-    const nextSize = last ? String(last.tank_size) : size;
-    const nextMaterial = last ? last.tank_material : material;
-
-    setSize(nextSize);
-    setMaterial(nextMaterial);
-
-    await fillSuggestedWeight(next.id, nextMaterial, nextSize);
-  }
-
-  async function handleSizeChange(nextSize: string) {
-    setSize(nextSize);
-    if (member) await fillSuggestedWeight(member.id, material, nextSize);
-  }
-
-  async function handleMaterialChange(nextMaterial: TankMaterial) {
-    setMaterial(nextMaterial);
-    if (member) await fillSuggestedWeight(member.id, nextMaterial, size);
+    // Son kullanılan tüp seçili gelsin. Ağırlığı yukarıdaki effect dolduruyor.
+    if (last) {
+      setTank({ size: String(last.tank_size), material: last.tank_material });
+    }
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -109,7 +108,7 @@ export function StartDiveForm({
       setError("Üye seçilmedi.");
       return;
     }
-    const numericSize = Number(size);
+    const numericSize = Number(tank.size);
     if (!Number.isFinite(numericSize) || numericSize <= 0) {
       setError("Tüp hacmi gerekli.");
       return;
@@ -148,7 +147,7 @@ export function StartDiveForm({
         start_pressure: Number(startPressure),
         weight: Number(weight),
         tank_size: numericSize,
-        tank_material: material,
+        tank_material: tank.material,
         // Kulüpte twin kullanılmıyor. Kolon şemada duruyor çünkü
         // dive_detail hacmi ona göre ikiye katlıyor ve eski kayıtlar
         // için doğru kalması gerekiyor.
@@ -198,10 +197,9 @@ export function StartDiveForm({
       )}
 
       <TankPicker
-        size={size}
-        material={material}
-        onSizeChange={handleSizeChange}
-        onMaterialChange={handleMaterialChange}
+        size={tank.size}
+        material={tank.material}
+        onChange={(patch) => setTank((prev) => ({ ...prev, ...patch }))}
       />
 
       <div className="space-y-2">
