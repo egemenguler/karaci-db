@@ -35,10 +35,11 @@ export function StartDiveForm({
   const [buddy, setBuddy] = useState<MemberOption | null>(null);
   const [leader, setLeader] = useState<MemberOption | null>(null);
 
-  // Yeni üyede geçmiş yok; kulüpte en yaygın kurulum burada varsayılan.
+  // Geçmişi olmayan üyede kulüpteki en yaygın kurulum varsayılan.
+  // Üye seçilince bu, kişinin son kullandığı tüple değişiyor.
   const [tank, setTank] = useState<{ size: string; material: TankMaterial }>({
-    size: "12",
-    material: "steel",
+    size: "11.1",
+    material: "aluminum",
   });
 
   const [weight, setWeight] = useState("");
