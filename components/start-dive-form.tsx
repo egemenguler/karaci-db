@@ -38,7 +38,6 @@ export function StartDiveForm({
   // Yeni üyede geçmiş yok; kulüpte en yaygın kurulum burada varsayılan.
   const [size, setSize] = useState("12");
   const [material, setMaterial] = useState<TankMaterial>("steel");
-  const [twin, setTwin] = useState(false);
 
   const [weight, setWeight] = useState("");
   const [startPressure, setStartPressure] = useState("");
@@ -54,7 +53,6 @@ export function StartDiveForm({
     memberId: string,
     nextMaterial: TankMaterial,
     nextSize: string,
-    nextTwin: boolean,
   ) {
     const numericSize = Number(nextSize);
     if (!Number.isFinite(numericSize) || numericSize <= 0) return;
@@ -63,7 +61,7 @@ export function StartDiveForm({
       p_member_id: memberId,
       p_tank_material: nextMaterial,
       p_tank_size: numericSize,
-      p_twin: nextTwin,
+      p_twin: false,
     });
 
     setWeight(data === null || data === undefined ? "" : String(data));
@@ -77,7 +75,7 @@ export function StartDiveForm({
     // Son kullanılan tüp seçili gelsin.
     const { data: last } = await supabase
       .from("dive")
-      .select("tank_size, tank_material, twin")
+      .select("tank_size, tank_material")
       .eq("member_id", next.id)
       .is("deleted_at", null)
       .order("entry_time", { ascending: false })
@@ -86,26 +84,21 @@ export function StartDiveForm({
 
     const nextSize = last ? String(last.tank_size) : size;
     const nextMaterial = last ? last.tank_material : material;
-    const nextTwin = last ? last.twin : twin;
 
     setSize(nextSize);
     setMaterial(nextMaterial);
-    setTwin(nextTwin);
 
-    await fillSuggestedWeight(next.id, nextMaterial, nextSize, nextTwin);
+    await fillSuggestedWeight(next.id, nextMaterial, nextSize);
   }
 
-  async function handleTankChange(next: {
-    size: string;
-    material: TankMaterial;
-    twin: boolean;
-  }) {
-    setSize(next.size);
-    setMaterial(next.material);
-    setTwin(next.twin);
-    if (member) {
-      await fillSuggestedWeight(member.id, next.material, next.size, next.twin);
-    }
+  async function handleSizeChange(nextSize: string) {
+    setSize(nextSize);
+    if (member) await fillSuggestedWeight(member.id, material, nextSize);
+  }
+
+  async function handleMaterialChange(nextMaterial: TankMaterial) {
+    setMaterial(nextMaterial);
+    if (member) await fillSuggestedWeight(member.id, nextMaterial, size);
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -156,7 +149,10 @@ export function StartDiveForm({
         weight: Number(weight),
         tank_size: numericSize,
         tank_material: material,
-        twin,
+        // Kulüpte twin kullanılmıyor. Kolon şemada duruyor çünkü
+        // dive_detail hacmi ona göre ikiye katlıyor ve eski kayıtlar
+        // için doğru kalması gerekiyor.
+        twin: false,
         buddy_id: buddy?.id ?? null,
         leader_id: leader?.id ?? null,
       },
@@ -204,8 +200,8 @@ export function StartDiveForm({
       <TankPicker
         size={size}
         material={material}
-        twin={twin}
-        onChange={handleTankChange}
+        onSizeChange={handleSizeChange}
+        onMaterialChange={handleMaterialChange}
       />
 
       <div className="space-y-2">
