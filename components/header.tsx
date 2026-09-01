@@ -4,7 +4,7 @@ import Link from "next/link";
 export function Header() {
   return (
     <header className="sticky top-0 z-10 border-b bg-background">
-      <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4">
+      <div className="mx-auto flex h-14 max-w-3xl items-center gap-4 px-4">
         <Link href="/" className="flex items-center gap-2.5">
           <Image
             src="/logo.png"
@@ -18,6 +18,18 @@ export function Header() {
             Karacı
           </span>
         </Link>
+
+        <nav className="ml-auto flex items-center gap-4 text-sm font-medium">
+          <Link href="/" className="underline-offset-4 hover:underline">
+            Suda kim var
+          </Link>
+          <Link href="/members" className="underline-offset-4 hover:underline">
+            Üyeler
+          </Link>
+          <Link href="/camps" className="underline-offset-4 hover:underline">
+            Kamplar
+          </Link>
+        </nav>
       </div>
     </header>
   );

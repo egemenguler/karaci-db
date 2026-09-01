@@ -1,70 +1,81 @@
-// Geçici sayfa. Adım 3'te "suda kim var" ekranıyla değiştirilecek.
-// Şu anki tek işi: tema değişkenlerinin Tailwind sınıflarına
-// doğru bağlandığını gözle doğrulamak.
+// Ana ekran: aktif kamp + suda kim var.
+//
+// Server Component. Okuma sunucuda yapılır, veriyi WaterList'e
+// (client) geçirir; sayaç ve renk orada tazelenir.
 
+import Link from "next/link";
+import { WaterList } from "@/components/water-list";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createServerSupabase } from "@/lib/supabase-server";
 
-const diveColors = [
-  { name: "dive-fresh", label: "0–20 dk", className: "bg-dive-fresh" },
-  { name: "dive-mid", label: "20–35 dk", className: "bg-dive-mid" },
-  { name: "dive-long", label: "35–50 dk", className: "bg-dive-long" },
-  { name: "dive-deep", label: "50+ dk", className: "bg-dive-deep" },
-];
+// Bu ekran her zaman taze olmalı — kim suda, o anki gerçek.
+export const dynamic = "force-dynamic";
 
-const brandSteps = [
-  "bg-brand-100",
-  "bg-brand-300",
-  "bg-brand-500",
-  "bg-brand-700",
-  "bg-brand-900",
-];
+export default async function Home() {
+  const supabase = createServerSupabase();
 
-export default function Home() {
+  const { data: camp, error: campError } = await supabase
+    .from("camp")
+    .select("id, name, year")
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (campError) {
+    return <ErrorBox title="Kamp okunamadı" message={campError.message} />;
+  }
+
+  if (!camp) {
+    return (
+      <div className="rounded-xl border border-dashed px-6 py-10 text-center">
+        <p className="font-medium">Aktif kamp yok</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Dalış kaydı girebilmek için önce bir kampın aktif olması gerekiyor.
+        </p>
+      </div>
+    );
+  }
+
+  const { data: dives, error: diveError } = await supabase
+    .from("active_dive")
+    .select("*")
+    .eq("camp_id", camp.id)
+    // En uzun süredir suda olan en üstte.
+    .order("entry_time", { ascending: true });
+
+  if (diveError) {
+    return <ErrorBox title="Dalışlar okunamadı" message={diveError.message} />;
+  }
+
+  // Server Component istek başına bir kez render ediliyor, dolayısıyla
+  // burada saati okumak güvenli. WaterList ilk render'ı bu değerle yapıp
+  // hydration uyuşmazlığını önlüyor, sonra tarayıcı saatine geçiyor.
+  // eslint-disable-next-line react-hooks/purity
+  const serverNow = Date.now();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Tema kontrolü</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Suda kim var</h1>
         <p className="text-sm text-muted-foreground">
-          Adım 1 iskeleti. Buraya adım 3&apos;te &quot;suda kim var&quot; gelecek.
+          {camp.name} · {camp.year}
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Dalış süresi renkleri</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {diveColors.map((c) => (
-            <div key={c.name} className="space-y-1.5">
-              <div className={`h-16 rounded-lg border ${c.className}`} />
-              <div className="text-xs font-medium">{c.name}</div>
-              <div className="text-xs text-muted-foreground">{c.label}</div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <WaterList dives={dives ?? []} serverNow={serverNow} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Brand skalası</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            {brandSteps.map((c) => (
-              <div key={c} className={`h-10 flex-1 rounded-md border ${c}`} />
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button>Dalış Başlat</Button>
-            <Button variant="secondary">İkincil</Button>
-            <Button variant="outline">Anahat</Button>
-            <span className="text-brand-800 text-sm font-medium">
-              text-brand-800
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+      <Button asChild className="h-14 w-full text-base">
+        <Link href="/dives/new">Dalış Başlat</Link>
+      </Button>
+    </div>
+  );
+}
+
+function ErrorBox({ title, message }: { title: string; message: string }) {
+  return (
+    <div className="rounded-xl border px-6 py-8 text-center">
+      <p className="font-medium">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }

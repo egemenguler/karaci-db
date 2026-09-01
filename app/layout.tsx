@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/header";
+import { OutboxBanner } from "@/components/outbox-banner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <Header />
+        <OutboxBanner />
         <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
           {children}
         </main>
