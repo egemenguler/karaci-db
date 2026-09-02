@@ -26,6 +26,12 @@ Bunların hepsi bilinçli. "Eksik" görünen şeyler kasıtlı olarak yok.
 
 **Kamp–üye ilişkisi ayrı tabloda tutulmuyor**, dalış kayıtlarından türetiliyor. Sebep: insanlara mümkün olduğunca az veri girdirmek. Kampa gelip hiç dalmayan birinin kaydı tutulmuyor, buna ihtiyaç yok.
 
+**Aynı anda birden fazla kamp aktif olabilir.** Nadir (iki kulüp kampının
+çakışması) ama mümkün, o yüzden şemada tekil indeks yok. Bir cihaz ise her
+zaman tek kampla çalışıyor; hangi kamp olduğu cihazda tutuluyor
+(`lib/selected-camp.ts`), veritabanında değil. Tek kamp aktifken hiçbir şey
+sorulmuyor. Ayrıntı README'de.
+
 **Aktif dalış = `exit_time IS NULL`.** Ayrı bir durum kolonu yok. Suda kim var sorgusu bunun üzerinden gider (`active_dive` view).
 
 **Buddy yönsüz.** A'nın kaydında B yazar, B'nin kaydında A yazmak zorunda değil. Karşılıklı kayıt oluşturma, iki yönlü senkronizasyon yapma. Grafik çizerken ilişkiyi yönsüz say.
@@ -87,7 +93,7 @@ Pratikte aynı anda tek kişi kullanıyor, çakışma neredeyse imkânsız. Edge
 ## Ekran akışı
 
 **Ana ekran**
-- Aktif kamp
+- Aktif kamp (birden fazlaysa cihaz bir kez seçer)
 - Suda kim var: kart listesi, geçen süre sayacı, süreye göre renk
 - "Dalış Başlat" butonu
 

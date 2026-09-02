@@ -1,11 +1,11 @@
 // Ana ekran: aktif kamp + suda kim var.
 //
-// Server Component. Okuma sunucuda yapılır, veriyi WaterList'e
-// (client) geçirir; sayaç ve renk orada tazelenir.
+// Server Component. Okuma sunucuda yapılır; aynı anda birden fazla kamp
+// aktif olabildiği için AKTİF KAMPLARIN HEPSİ ve onlara ait açık
+// dalışlar çekilir. Cihazın hangi kampta olduğunu ActiveCampScreen
+// (client) biliyor — seçim cihaza ait, veritabanına değil.
 
-import Link from "next/link";
-import { WaterList } from "@/components/water-list";
-import { Button } from "@/components/ui/button";
+import { ActiveCampScreen } from "@/components/active-camp-screen";
 import { createServerSupabase } from "@/lib/supabase-server";
 
 // Bu ekran her zaman taze olmalı — kim suda, o anki gerçek.
@@ -14,18 +14,20 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const supabase = createServerSupabase();
 
-  const { data: camp, error: campError } = await supabase
+  const { data: camps, error: campError } = await supabase
     .from("camp")
     .select("id, name, year")
     .eq("is_active", true)
     .is("deleted_at", null)
-    .maybeSingle();
+    // Birden fazla aktif kamp varsa en son başlayan üstte listelenir.
+    .order("starts_on", { ascending: false, nullsFirst: false })
+    .order("name", { ascending: true });
 
   if (campError) {
     return <ErrorBox title="Kamp okunamadı" message={campError.message} />;
   }
 
-  if (!camp) {
+  if (!camps || camps.length === 0) {
     return (
       <div className="rounded-xl border border-dashed px-6 py-10 text-center">
         <p className="font-medium">Aktif kamp yok</p>
@@ -39,7 +41,10 @@ export default async function Home() {
   const { data: dives, error: diveError } = await supabase
     .from("active_dive")
     .select("*")
-    .eq("camp_id", camp.id)
+    .in(
+      "camp_id",
+      camps.map((camp) => camp.id),
+    )
     // En uzun süredir suda olan en üstte.
     .order("entry_time", { ascending: true });
 
@@ -54,20 +59,11 @@ export default async function Home() {
   const serverNow = Date.now();
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Suda kim var</h1>
-        <p className="text-sm text-muted-foreground">
-          {camp.name} · {camp.year}
-        </p>
-      </div>
-
-      <WaterList dives={dives ?? []} serverNow={serverNow} />
-
-      <Button asChild className="h-14 w-full text-base">
-        <Link href="/dives/new">Dalış Başlat</Link>
-      </Button>
-    </div>
+    <ActiveCampScreen
+      camps={camps}
+      dives={dives ?? []}
+      serverNow={serverNow}
+    />
   );
 }
 

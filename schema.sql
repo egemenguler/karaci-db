@@ -26,8 +26,11 @@ create table camp (
   deleted_at  timestamptz
 );
 
--- only one active camp at a time
-create unique index camp_single_active
+-- More than one camp can be active at the same time. It is rare -- two
+-- club camps overlapping -- but it happens, so there is deliberately NO
+-- unique index here. A device works on one camp at a time; which one is
+-- chosen on the device, not in the database (see README).
+create index camp_active_idx
   on camp (is_active)
   where is_active and deleted_at is null;
 

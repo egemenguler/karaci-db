@@ -42,6 +42,11 @@ Supabase SQL editor'de sırayla:
 3. `seed.sql` — uydurma kamp ve dalışlar, sadece geliştirme.
    **Production'da çalıştırma.**
 
+`migration-multi-active-camp.sql` bu değişiklikten **önce** kurulmuş bir
+veritabanında bir kez çalıştırılır: `camp_single_active` tekil indeksini
+düşürür, yerine düz indeks koyar. Sıfırdan kurulum `schema.sql`'den yeni
+hali aldığı için ona ihtiyaç duymaz.
+
 Sıfırdan kurulumda `cleanup-dummy.sql` **çalıştırılmaz** — silecek bir şey
 yok. Uygulamanın geliştirilirken kullandığı uydurma veriyi taşıyan mevcut
 veritabanında ise 1. adımdan sonra, `members.sql`'den **önce** bir kez
@@ -104,7 +109,7 @@ npm run types:gen
 
 ## Mimari — devralan için
 
-Üç kural var, hepsi bilinçli. Değiştirmeden önce iki kez düşün.
+Beş kural var, hepsi bilinçli. Değiştirmeden önce iki kez düşün.
 
 ### 1. Okuma sunucuda, yazma tarayıcıda
 
@@ -158,7 +163,35 @@ Her sorgu `.is("deleted_at", null)` filtreler. RLS'te DELETE policy yazılmadı 
 `anon`/`authenticated` rollerinden DELETE yetkisi geri alındı — yani API
 üzerinden bir satırı kalıcı silmek **mümkün değil.**
 
-### 4. Saat biçimleme kamp dilimine sabit
+### 4. Aynı anda birden fazla kamp aktif olabilir, ama bir cihaz tek kampta
+
+Şemada tekil indeks **yok**: iki kulüp kampı çakışabiliyor, nadir ama oluyor.
+Buna karşılık bir cihaz her zaman tek kampla çalışıyor — karacı kıyıda hangi
+kamptaysa telefonu da odur.
+
+Bu yüzden "hangi kamp" sorusunun cevabı veritabanında değil **cihazda**:
+`lib/selected-camp.ts`, localStorage (`karaci.camp`). Sunucuya hiç gitmiyor.
+
+- Ana ekran aktif kampların **hepsini** ve onlara ait açık dalışları çeker;
+  süzme `components/active-camp-screen.tsx` içinde, tarayıcıda yapılır.
+- **Tek kamp aktifse hiçbir şey sorulmaz** ve ekran sunucudan eksiksiz gelir.
+  Kısa yol (`onlyCamp`) depolamaya hiç bakmaz. Neredeyse her zamanki hal bu.
+- Birden fazla kamp aktifse ve cihaz seçmemişse kamp sorulur. Cihaz başına
+  bir kez.
+- `useSyncExternalStore`'un sunucu anlık görüntüsü `undefined` döner —
+  "seçim yok" (`null`) ile "henüz bilinmiyor" ayrı tutulur. Ayrım olmasa
+  seçimi olan cihazda kamp sorusu bir an görünüp kaybolurdu.
+- "Dalış Başlat" kampı `?camp=<id>` ile taşır, böylece `/dives/new` sunucuda
+  hangi kampa yazacağını bilir. Parametre yoksa: tek kamp varsa o, birden
+  fazlaysa kamp sorulur. Parametre aktif olmayan bir kampı gösteriyorsa
+  yok sayılır — eski bir bağlantı kapanmış kampa dalış yazamaz.
+
+Aktiflik kamp başına bir anahtar (`components/camp-list.tsx`): "Aktif yap" /
+"Bitir", tek update. Eskiden tekil indeks yüzünden "hepsini kapat, sonra
+birini aç" gerekiyordu ve ikinci update hata verirse hiç aktif kamp
+kalmıyordu; o yarış artık yok.
+
+### 5. Saat biçimleme kamp dilimine sabit
 
 `lib/time.ts` her şeyi `Europe/Istanbul`'da biçimler; makinenin saat dilimini
 kullanmaz. Sayfalar sunucuda render ediliyor ve sunucu UTC'de çalışıyor —

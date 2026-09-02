@@ -21,33 +21,26 @@ export function CampList({ camps }: { camps: Camp[] }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // camp_single_active tekil indeksi tek aktif kampa izin veriyor,
-  // bu yüzden önce eskisi kapatılıp sonra yenisi açılıyor.
-  async function activate(id: string) {
+  // Aynı anda birden fazla kamp aktif olabiliyor (nadir ama oluyor),
+  // dolayısıyla aktiflik kamp başına bir anahtar: tek update, dokunulan
+  // kamptan başkası etkilenmiyor.
+  //
+  // Eskiden şemadaki tekil indeks yüzünden "hepsini kapat, sonra birini
+  // aç" gerekiyordu; ikinci update hata verirse hiç aktif kamp kalmıyor
+  // ve ana ekran "aktif kamp yok" diyordu. O yarış bu modelde yok.
+  async function setActive(id: string, isActive: boolean) {
     setError(null);
     setBusyId(id);
 
-    const { error: clearError } = await supabase
+    const { error: writeError } = await supabase
       .from("camp")
-      .update({ is_active: false })
-      .eq("is_active", true)
-      .is("deleted_at", null);
-
-    if (clearError) {
-      setBusyId(null);
-      setError(clearError.message);
-      return;
-    }
-
-    const { error: setError_ } = await supabase
-      .from("camp")
-      .update({ is_active: true })
+      .update({ is_active: isActive })
       .eq("id", id);
 
     setBusyId(null);
 
-    if (setError_) {
-      setError(setError_.message);
+    if (writeError) {
+      setError(writeError.message);
       return;
     }
 
@@ -94,16 +87,18 @@ export function CampList({ camps }: { camps: Camp[] }) {
               </div>
             </div>
 
-            {!camp.is_active && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busyId !== null}
-                onClick={() => activate(camp.id)}
-              >
-                {busyId === camp.id ? "…" : "Aktif yap"}
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busyId !== null}
+              onClick={() => setActive(camp.id, !camp.is_active)}
+            >
+              {busyId === camp.id
+                ? "…"
+                : camp.is_active
+                  ? "Bitir"
+                  : "Aktif yap"}
+            </Button>
 
             <Link
               href={`/camps/${camp.id}/edit`}
