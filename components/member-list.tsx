@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import type { Database } from "@/lib/database.types";
-import { formatSatNo } from "@/lib/member";
+import { compareBySatNoDesc, formatSatNo } from "@/lib/member";
 
 type Member = Pick<
   Database["public"]["Tables"]["member"]["Row"],
@@ -31,9 +31,8 @@ export function MemberList({ members }: { members: Member[] }) {
             normalize(formatSatNo(member.sat_no) ?? "").includes(needle),
         );
 
-  // Postgres'in collation'ı Ç/Ğ/İ/Ö/Ş/Ü'yü Türkçe sıraya koymuyor,
-  // sıralamayı burada yapıyoruz.
-  const shown = [...matched].sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  // Numaraya göre azalan: en yeni üye en üstte. Bkz. compareBySatNoDesc.
+  const shown = [...matched].sort(compareBySatNoDesc);
 
   return (
     <div className="space-y-4">
