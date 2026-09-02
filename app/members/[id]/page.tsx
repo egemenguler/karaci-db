@@ -7,21 +7,12 @@ import { notFound } from "next/navigation";
 import { ConsumptionChart } from "@/components/consumption-chart";
 import { WeightChart } from "@/components/weight-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatTank } from "@/lib/dive";
+import { formatDuration, formatTank } from "@/lib/dive";
+import { formatSatNo } from "@/lib/member";
 import { formatDateTime } from "@/lib/time";
 import { createServerSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
-
-// lib/dive.ts'teki süre yardımcıları saniye bazlı ve aktif dalış
-// sayacı içindir; burada dakika bazlı TOPLAM süre lazım, o yüzden
-// küçük bir yerel yardımcı.
-function formatDuration(totalMinutes: number): string {
-  const minutes = Math.round(totalMinutes);
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return hours > 0 ? `${hours} sa ${rest} dk` : `${rest} dk`;
-}
 
 export default async function MemberProfilePage({
   params,
@@ -83,14 +74,19 @@ export default async function MemberProfilePage({
         <h1 className="text-2xl font-semibold tracking-tight">{member.name}</h1>
         {(member.sat_no || member.joined_year) && (
           <p className="text-sm text-muted-foreground">
-            {[member.sat_no, member.joined_year].filter(Boolean).join(" · ")}
+            {[formatSatNo(member.sat_no), member.joined_year]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Toplam dalış" value={String(totalDives)} />
-        <StatCard label="Toplam dip zamanı" value={formatDuration(totalMinutes)} />
+        <StatCard
+          label="Toplam dalış süresi"
+          value={formatDuration(totalMinutes)}
+        />
       </div>
 
       {(longest || deepest) && (

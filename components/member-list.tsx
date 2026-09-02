@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import type { Database } from "@/lib/database.types";
+import { formatSatNo } from "@/lib/member";
 
 type Member = Pick<
   Database["public"]["Tables"]["member"]["Row"],
@@ -19,13 +20,15 @@ export function MemberList({ members }: { members: Member[] }) {
   const [query, setQuery] = useState("");
 
   const needle = normalize(query.trim());
+  // Numara aramasında gösterilen biçime bakıyoruz ("SAT-1105"), böylece
+  // hem "1105" hem "SAT-1105" yazan bulur.
   const matched =
     needle === ""
       ? members
       : members.filter(
           (member) =>
             normalize(member.name).includes(needle) ||
-            normalize(member.sat_no ?? "").includes(needle),
+            normalize(formatSatNo(member.sat_no) ?? "").includes(needle),
         );
 
   // Postgres'in collation'ı Ç/Ğ/İ/Ö/Ş/Ü'yü Türkçe sıraya koymuyor,
@@ -56,9 +59,9 @@ export function MemberList({ members }: { members: Member[] }) {
               >
                 {member.name}
               </Link>
-              {member.sat_no && (
+              {formatSatNo(member.sat_no) && (
                 <span className="text-sm text-muted-foreground">
-                  {member.sat_no}
+                  {formatSatNo(member.sat_no)}
                 </span>
               )}
               {member.joined_year && (

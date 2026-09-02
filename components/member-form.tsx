@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase-client";
 
+// Numara veritabanında kulübün yayımladığı düz haliyle duruyor; "SAT-"
+// öneki sadece ekranda ekleniyor (bkz. lib/member.ts). Kullanıcı öneki
+// de yazarsa atıyoruz, yoksa listede "SAT-SAT-1105" görünürdü.
+function normalizeSatNo(value: string): string {
+  return value.trim().replace(/^sat[\s-]*/i, "");
+}
+
 export function MemberForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -37,7 +44,7 @@ export function MemberForm() {
 
     const { error: insertError } = await supabase.from("member").insert({
       name: name.trim(),
-      sat_no: satNo.trim() === "" ? null : satNo.trim(),
+      sat_no: normalizeSatNo(satNo) === "" ? null : normalizeSatNo(satNo),
       joined_year: year,
     });
 
@@ -80,9 +87,13 @@ export function MemberForm() {
           id="sat-no"
           value={satNo}
           onChange={(event) => setSatNo(event.target.value)}
+          placeholder="1105"
           className="h-12 text-base md:text-base"
           autoComplete="off"
         />
+        <p className="text-sm text-muted-foreground">
+          Sadece numara; ekranda &quot;SAT-&quot; öneki kendiliğinden eklenir.
+        </p>
       </div>
 
       <div className="space-y-2">

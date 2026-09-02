@@ -13,7 +13,8 @@ Logo repo kökünde. Header, favicon ve (v2'de) paylaşılabilir kartlarda kulla
 - Tailwind + shadcn/ui
 - Deploy: Vercel veya Cloudflare
 
-Şema: `schema.sql`
+Şema: `schema.sql` · Gerçek üye listesi: `members.sql` (üretilen dosya,
+`npm run members:gen`) · Geliştirme verisi: `seed.sql`
 
 ---
 
@@ -38,6 +39,11 @@ Bunların hepsi bilinçli. "Eksik" görünen şeyler kasıtlı olarak yok.
 **Soft delete** (`deleted_at`). Defterin özü kayıt tutmak, silme geri alınabilir olmalı. Tüm sorgular `deleted_at is null` filtreler.
 
 **`created_by_name`** serbest metin, yetki değil sadece iz. Defterin altına isim yazmak gibi.
+
+**Üye kayıtları kulübün genel üye listesinden geliyor** (`members.sql`).
+Numarası olmayan üyeler alınmıyor. `sat_no` düz sayı olarak saklanıyor,
+`SAT-` öneki sadece ekranda ekleniyor — veritabanı kulübün yayımladığı
+biçimle birebir kalsın.
 
 ---
 
@@ -104,7 +110,7 @@ Suda kim var listesinden kişiye dokun → çıkış havası + saat (şimdi, dü
 - Kendi dalışlarının opsiyonel alanlarını doldurma ekranı
 
 **Kamp özeti**
-Toplam dalış, toplam dip zamanı, en aktif dalgıç.
+Toplam dalış, toplam dalış süresi, en aktif dalgıç.
 
 ---
 
