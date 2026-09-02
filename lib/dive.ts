@@ -69,3 +69,16 @@ export function formatTank(
   const label = material ? ` ${MATERIAL_LABEL[material]}` : "";
   return `${prefix}${size} L${label}`;
 }
+
+/**
+ * Dakika cinsinden dalış süresi → "1 sa 35 dk" · bir saatin altında "42 dk"
+ *
+ * Yukarıdaki elapsed* yardımcıları saniye bazlı ve suda kim var
+ * sayacı içindir; bu ise kapanmış bir dalışın (ya da toplamın) süresi.
+ */
+export function formatDuration(totalMinutes: number): string {
+  const minutes = Math.round(totalMinutes);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours > 0 ? `${hours} sa ${rest} dk` : `${rest} dk`;
+}

@@ -1,4 +1,4 @@
-// Kamp özeti: toplam dalış, toplam dip zamanı, en aktif dalgıç,
+// Kamp özeti: toplam dalış, toplam dalış süresi, en aktif dalgıç,
 // katılan dalgıçlar listesi.
 //
 // Hesaplamalar burada JS'te yapılıyor (kamp başına birkaç yüz satır,
@@ -8,6 +8,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDuration } from "@/lib/dive";
+import { formatDayRange } from "@/lib/time";
 import { createServerSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -16,29 +18,8 @@ type MemberStat = {
   memberId: string;
   name: string;
   diveCount: number;
-  dipDakika: number;
+  durationMin: number;
 };
-
-/** Dakikayı "42 sa 15 dk" ya da (bir saatten azsa) "15 dk" biçimine çevirir. */
-function formatSure(totalMinutes: number): string {
-  const rounded = Math.round(totalMinutes);
-  const hours = Math.floor(rounded / 60);
-  const minutes = rounded % 60;
-  return hours > 0 ? `${hours} sa ${minutes} dk` : `${minutes} dk`;
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function formatRange(startsOn: string | null, endsOn: string | null): string {
-  if (!startsOn && !endsOn) return "";
-  if (startsOn && endsOn) return `${formatDate(startsOn)} – ${formatDate(endsOn)}`;
-  return formatDate((startsOn ?? endsOn)!);
-}
 
 export default async function CampSummaryPage({
   params,
@@ -92,7 +73,7 @@ export default async function CampSummaryPage({
   const closed = closedDives ?? [];
   const open = openDives ?? [];
 
-  // Üye başına dalış sayısı + dip zamanı. Dip zamanı sadece kapalı
+  // Üye başına dalış sayısı + toplam dalış süresi. Süre sadece kapalı
   // dalışlardan gelir (duration_min açık dalışta hesaplanamaz).
   const statsByMember = new Map<string, MemberStat>();
 
@@ -102,10 +83,10 @@ export default async function CampSummaryPage({
       memberId: dive.member_id,
       name: dive.member_name,
       diveCount: 0,
-      dipDakika: 0,
+      durationMin: 0,
     };
     stat.diveCount += 1;
-    stat.dipDakika += dive.duration_min ?? 0;
+    stat.durationMin += dive.duration_min ?? 0;
     statsByMember.set(dive.member_id, stat);
   }
 
@@ -115,7 +96,7 @@ export default async function CampSummaryPage({
       memberId: dive.member_id,
       name: dive.member_name,
       diveCount: 0,
-      dipDakika: 0,
+      durationMin: 0,
     };
     stat.diveCount += 1;
     statsByMember.set(dive.member_id, stat);
@@ -126,7 +107,10 @@ export default async function CampSummaryPage({
   );
 
   const totalDiveCount = closed.length + open.length;
-  const totalDipDakika = closed.reduce((sum, d) => sum + (d.duration_min ?? 0), 0);
+  const totalDurationMin = closed.reduce(
+    (sum, d) => sum + (d.duration_min ?? 0),
+    0,
+  );
 
   const maxDiveCount = members.length > 0 ? members[0].diveCount : 0;
   const mostActive = members.filter((m) => m.diveCount === maxDiveCount);
@@ -144,8 +128,8 @@ export default async function CampSummaryPage({
         </div>
         <p className="text-sm text-muted-foreground">
           {camp.year}
-          {formatRange(camp.starts_on, camp.ends_on) &&
-            ` · ${formatRange(camp.starts_on, camp.ends_on)}`}
+          {formatDayRange(camp.starts_on, camp.ends_on) &&
+            ` · ${formatDayRange(camp.starts_on, camp.ends_on)}`}
         </p>
       </div>
 
@@ -177,12 +161,12 @@ export default async function CampSummaryPage({
             <Card size="sm">
               <CardHeader>
                 <CardTitle className="text-sm text-muted-foreground">
-                  Toplam dip zamanı
+                  Toplam dalış süresi
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-semibold tabular-nums">
-                  {formatSure(totalDipDakika)}
+                  {formatDuration(totalDurationMin)}
                 </p>
               </CardContent>
             </Card>
@@ -223,7 +207,7 @@ export default async function CampSummaryPage({
                   >
                     <span className="truncate font-medium">{m.name}</span>
                     <span className="shrink-0 text-sm text-muted-foreground">
-                      {m.diveCount} dalış · {formatSure(m.dipDakika)}
+                      {m.diveCount} dalış · {formatDuration(m.durationMin)}
                     </span>
                   </Link>
                 </li>

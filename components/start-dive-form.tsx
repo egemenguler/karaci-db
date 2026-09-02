@@ -207,7 +207,9 @@ export function StartDiveForm({
         <Label htmlFor="weight" className="text-base">
           Ağırlık
         </Label>
-        <div className="flex items-center gap-2">
+        {/* Birim input'un içinde: yanına koyunca alan diğerlerinden kısa
+            kalıyor ve sağ kenarlar hizasız görünüyor. Bkz. PressureInput. */}
+        <div className="relative">
           <Input
             id="weight"
             type="number"
@@ -217,10 +219,12 @@ export function StartDiveForm({
             step={0.5}
             value={weight}
             onChange={(event) => setWeight(event.target.value)}
-            className="h-14 text-2xl tabular-nums md:text-2xl"
+            className="h-14 pr-14 text-2xl tabular-nums md:text-2xl"
             autoComplete="off"
           />
-          <span className="text-lg text-muted-foreground">kg</span>
+          <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-lg text-muted-foreground">
+            kg
+          </span>
         </div>
       </div>
 

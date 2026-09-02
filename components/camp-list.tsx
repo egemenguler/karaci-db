@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase-client";
+import { formatDayRange } from "@/lib/time";
 
 type Camp = {
   id: string;
@@ -14,17 +15,6 @@ type Camp = {
   ends_on: string | null;
   is_active: boolean;
 };
-
-function formatRange(startsOn: string | null, endsOn: string | null): string {
-  if (!startsOn && !endsOn) return "";
-  const format = (value: string) =>
-    new Date(value).toLocaleDateString("tr-TR", {
-      day: "numeric",
-      month: "short",
-    });
-  if (startsOn && endsOn) return `${format(startsOn)} – ${format(endsOn)}`;
-  return format((startsOn ?? endsOn)!);
-}
 
 export function CampList({ camps }: { camps: Camp[] }) {
   const router = useRouter();
@@ -99,8 +89,8 @@ export function CampList({ camps }: { camps: Camp[] }) {
               </div>
               <div className="text-sm text-muted-foreground">
                 {camp.year}
-                {formatRange(camp.starts_on, camp.ends_on) &&
-                  ` · ${formatRange(camp.starts_on, camp.ends_on)}`}
+                {formatDayRange(camp.starts_on, camp.ends_on) &&
+                  ` · ${formatDayRange(camp.starts_on, camp.ends_on)}`}
               </div>
             </div>
 

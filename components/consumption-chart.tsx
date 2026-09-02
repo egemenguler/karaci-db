@@ -3,6 +3,14 @@
 // Hava tüketim grafiği: bar/dk her zaman çizilir. sac_rate sadece
 // derinlik girilmiş dalışlarda dolu geliyor (bkz. dive_detail view),
 // o yüzden ikinci seri yalnızca en az bir dalışta varsa eklenir.
+//
+// SAC serisi NOKTA İŞARETLİ çiziliyor: derinlik genelde tek tük dalışta
+// dolu oluyor, tek noktalı bir çizginin uzunluğu sıfır olduğu için
+// nokta olmadan grafikte hiç görünmüyordu.
+//
+// İki serinin AYRI Y EKSENİ var. Birimleri farklı ve büyüklükleri de
+// farklı (bar/dk ~5, SAC ~18); tek eksende bar/dk dibe yapışıp
+// okunmuyordu. Eksen yazıları serinin rengiyle işaretli.
 
 import {
   CartesianGrid,
@@ -57,13 +65,29 @@ export function ConsumptionChart({ dives }: { dives: DiveDetail[] }) {
     <div className="space-y-2">
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+          <LineChart
+            data={data}
+            margin={{ top: 8, right: hasSac ? 0 : 8, left: -16, bottom: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} width={40} />
+            <YAxis
+              yAxisId="bar"
+              tick={{ fontSize: 12, fill: "var(--chart-1)" }}
+              width={40}
+            />
+            {hasSac && (
+              <YAxis
+                yAxisId="sac"
+                orientation="right"
+                tick={{ fontSize: 12, fill: "var(--chart-2)" }}
+                width={40}
+              />
+            )}
             <Tooltip />
             {hasSac && <Legend wrapperStyle={{ fontSize: 12 }} />}
             <Line
+              yAxisId="bar"
               type="monotone"
               dataKey="barPerMin"
               name="bar/dk"
@@ -73,12 +97,13 @@ export function ConsumptionChart({ dives }: { dives: DiveDetail[] }) {
             />
             {hasSac && (
               <Line
+                yAxisId="sac"
                 type="monotone"
                 dataKey="sacRate"
                 name="SAC (L/dk)"
                 stroke="var(--chart-2)"
                 strokeWidth={2}
-                dot={false}
+                dot={{ r: 3 }}
                 connectNulls
               />
             )}

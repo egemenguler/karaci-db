@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase-client";
 
-// Opsiyonel log alanları: derinlik, dalış tipi, site, not.
+// Opsiyonel log alanları: derinlik, dalış tipi, nokta, not.
 // Bunlar bilgisayardan/log defterinden gelir, giriş formunda sorulmaz —
 // kişi dalıştan sonra kendisi doldurur.
 export function DiveLogForm({
@@ -82,7 +82,9 @@ export function DiveLogForm({
         <Label htmlFor="max-depth" className="text-base">
           Maks. derinlik
         </Label>
-        <div className="flex items-center gap-2">
+        {/* Birim input'un içinde ki alanın sağ kenarı aşağıdaki
+            alanlarla hizalı kalsın. Bkz. PressureInput. */}
+        <div className="relative">
           <Input
             id="max-depth"
             type="number"
@@ -95,10 +97,12 @@ export function DiveLogForm({
               setSaved(false);
               setMaxDepthValue(event.target.value);
             }}
-            className="h-12 text-base md:text-base"
+            className="h-12 pr-10 text-base md:text-base"
             autoComplete="off"
           />
-          <span className="text-sm text-muted-foreground">m</span>
+          <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-muted-foreground">
+            m
+          </span>
         </div>
       </div>
 
@@ -120,7 +124,7 @@ export function DiveLogForm({
 
       <div className="space-y-2">
         <Label htmlFor="site" className="text-base">
-          Site
+          Nokta
         </Label>
         <Input
           id="site"

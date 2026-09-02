@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteDiveButton, DiveLogForm } from "@/components/dive-log-form";
-import { formatTank } from "@/lib/dive";
+import { formatDuration, formatTank } from "@/lib/dive";
 import { formatClock, formatDateTime } from "@/lib/time";
 import { createServerSupabase } from "@/lib/supabase-server";
 import type { Database } from "@/lib/database.types";
@@ -15,17 +15,6 @@ type DiveDetail = Pick<
   Database["public"]["Views"]["dive_detail"]["Row"],
   "duration_min" | "pressure_used" | "bar_per_min" | "sac_rate"
 >;
-
-/** 95 → "1 sa 35 dk", 42 → "42 dk" */
-function formatMinutes(minutes: number): string {
-  const rounded = Math.round(minutes);
-  if (rounded >= 60) {
-    const hours = Math.floor(rounded / 60);
-    const mins = rounded % 60;
-    return `${hours} sa ${mins} dk`;
-  }
-  return `${rounded} dk`;
-}
 
 export default async function DiveDetailPage({
   params,
@@ -114,10 +103,10 @@ export default async function DiveDetailPage({
           value={dive.exit_time ? formatClock(dive.exit_time) : "Suda"}
         />
         <Row
-          label="Süre"
+          label="Dalış süresi"
           value={
             detail?.duration_min != null
-              ? formatMinutes(detail.duration_min)
+              ? formatDuration(detail.duration_min)
               : "—"
           }
         />
@@ -149,14 +138,6 @@ export default async function DiveDetailPage({
             Hesaplananlar
           </h2>
           <div className="divide-y rounded-xl border">
-            <Row
-              label="Dip zamanı"
-              value={
-                detail.duration_min != null
-                  ? formatMinutes(detail.duration_min)
-                  : "—"
-              }
-            />
             <Row
               label="Harcanan hava"
               value={
