@@ -2,7 +2,6 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toDateTimeLocalValue } from "@/lib/time";
 
 // Saat alanı: "şimdi" ile dolu gelir, gerekirse düzeltilir.
 //
@@ -20,12 +19,15 @@ export function TimeInput({
   label,
   value,
   onChange,
+  onNow,
   hint,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** "Şimdi": alanı elle girilmiş saatten çıkarıp yeniden şimdiye bağlar */
+  onNow: () => void;
   hint?: string;
 }) {
   return (
@@ -36,7 +38,7 @@ export function TimeInput({
         </Label>
         <button
           type="button"
-          onClick={() => onChange(toDateTimeLocalValue(new Date()))}
+          onClick={onNow}
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
           Şimdi

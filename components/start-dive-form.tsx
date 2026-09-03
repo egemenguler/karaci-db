@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import type { Database } from "@/lib/database.types";
 import { enqueue, flush, getAll, type OutboxItem } from "@/lib/outbox";
 import { supabase } from "@/lib/supabase-client";
-import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/time";
+import { useTimeField } from "@/lib/use-time-field";
 
 type TankMaterial = Database["public"]["Enums"]["tank_material"];
 
@@ -104,9 +104,7 @@ export function StartDiveForm({
 
   const [weight, setWeight] = useState("");
   const [startPressure, setStartPressure] = useState("");
-  const [entryTime, setEntryTime] = useState(() =>
-    toDateTimeLocalValue(new Date(serverNow)),
-  );
+  const entryTime = useTimeField(serverNow);
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -205,7 +203,7 @@ export function StartDiveForm({
       setError("Giriş havası gerekli.");
       return;
     }
-    if (entryTime === "") {
+    if (entryTime.value === "") {
       setError("Giriş saati gerekli.");
       return;
     }
@@ -227,7 +225,7 @@ export function StartDiveForm({
         id: diveId,
         camp_id: campId,
         member_id: member.id,
-        entry_time: fromDateTimeLocalValue(entryTime).toISOString(),
+        entry_time: entryTime.resolve().toISOString(),
         start_pressure: Number(startPressure),
         weight: Number(weight),
         tank_size: numericSize,
@@ -325,8 +323,9 @@ export function StartDiveForm({
       <TimeInput
         id="entry-time"
         label="Giriş saati"
-        value={entryTime}
-        onChange={setEntryTime}
+        value={entryTime.value}
+        onChange={entryTime.onChange}
+        onNow={entryTime.reset}
       />
 
       <MemberSearch

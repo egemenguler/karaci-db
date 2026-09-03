@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { PressureInput } from "@/components/pressure-input";
 import { TimeInput } from "@/components/time-input";
 import { enqueue, flush } from "@/lib/outbox";
-import { fromDateTimeLocalValue, formatClock, toDateTimeLocalValue } from "@/lib/time";
+import { formatClock } from "@/lib/time";
+import { useTimeField } from "@/lib/use-time-field";
 
 export function ExitDiveForm({
   diveId,
@@ -24,10 +25,8 @@ export function ExitDiveForm({
   const router = useRouter();
 
   // serverNow bir epoch değeri; yerel duvar saatine çeviren getter'lar
-  // tarayıcının saat diliminde çalışıyor, yani sunucunun TZ'si karışmıyor.
-  const [exitTime, setExitTime] = useState(() =>
-    toDateTimeLocalValue(new Date(serverNow)),
-  );
+  // kamp saat diliminde çalışıyor, yani sunucunun TZ'si karışmıyor.
+  const exitTime = useTimeField(serverNow);
   const [endPressure, setEndPressure] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -51,11 +50,11 @@ export function ExitDiveForm({
       );
       return;
     }
-    if (exitTime === "") {
+    if (exitTime.value === "") {
       setError("Çıkış saati gerekli.");
       return;
     }
-    const exitDate = fromDateTimeLocalValue(exitTime);
+    const exitDate = exitTime.resolve();
     if (exitDate.getTime() < new Date(entryTime).getTime()) {
       setError(
         `Çıkış saati giriş saatinden (${formatClock(entryTime)}) önce olamaz.`,
@@ -96,8 +95,9 @@ export function ExitDiveForm({
       <TimeInput
         id="exit-time"
         label="Çıkış saati"
-        value={exitTime}
-        onChange={setExitTime}
+        value={exitTime.value}
+        onChange={exitTime.onChange}
+        onNow={exitTime.reset}
         hint={`Giriş: ${formatClock(entryTime)}`}
       />
 
