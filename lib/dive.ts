@@ -42,9 +42,9 @@ export function describeElapsed(totalSeconds: number): string {
 // kolaylığı. Yazı rengi her bant için elle seçildi: açık zeminde koyu,
 // koyu zeminde açık.
 const DIVE_BANDS = [
-  { untilMinutes: 20, bg: "bg-dive-fresh", text: "text-brand-950" },
-  { untilMinutes: 35, bg: "bg-dive-mid", text: "text-brand-950" },
-  { untilMinutes: 50, bg: "bg-dive-long", text: "text-brand-50" },
+  { untilMinutes: 16, bg: "bg-dive-fresh", text: "text-brand-950" },
+  { untilMinutes: 28, bg: "bg-dive-mid", text: "text-brand-950" },
+  { untilMinutes: 40, bg: "bg-dive-long", text: "text-brand-50" },
   { untilMinutes: Infinity, bg: "bg-dive-deep", text: "text-brand-50" },
 ];
 
