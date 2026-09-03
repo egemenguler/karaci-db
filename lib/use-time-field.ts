@@ -20,6 +20,10 @@ export function useTimeField(serverNow: number) {
     toDateTimeLocalValue(new Date(serverNow)),
   );
   const [edited, setEdited] = useState(false);
+  // Elle girilen saat dakika hassasiyetinde; eşin giriş saatine
+  // bağlandığında ise tam o an tutuluyor ki iki sayaç aynı saniyeden
+  // başlasın. Alana elle dokunulunca düşüyor.
+  const [exact, setExact] = useState<Date | null>(null);
 
   // Dokunulmamış alan form açık beklerken geride kalmasın: ekranda yazan
   // dakika ile kaydedilecek an hep aynı olsun. Değer sadece dakika başında
@@ -37,15 +41,24 @@ export function useTimeField(serverNow: number) {
     value,
     onChange(next: string) {
       setEdited(true);
+      setExact(null);
       setValue(next);
+    },
+    /** Alanı verilen ana saniyesiyle birlikte sabitler. */
+    setAt(date: Date) {
+      setEdited(true);
+      setExact(date);
+      setValue(toDateTimeLocalValue(date));
     },
     /** "Şimdi" düğmesi: alanı elle girilmiş saatten çıkarıp şimdiye bağlar. */
     reset() {
       setEdited(false);
+      setExact(null);
       setValue(toDateTimeLocalValue(new Date()));
     },
     /** Kayda gidecek an. Alana dokunulmadıysa saniyesiyle birlikte şimdi. */
     resolve(): Date {
+      if (exact) return exact;
       return edited ? fromDateTimeLocalValue(value) : new Date();
     },
   };

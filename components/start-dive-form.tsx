@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import type { Database } from "@/lib/database.types";
 import { enqueue, flush, getAll, type OutboxItem } from "@/lib/outbox";
 import { supabase } from "@/lib/supabase-client";
+import { formatClock } from "@/lib/time";
 import { useTimeField } from "@/lib/use-time-field";
 
 type TankMaterial = Database["public"]["Enums"]["tank_material"];
@@ -29,17 +30,17 @@ export type OpenDive = {
 };
 
 /**
- * Eşi bu üye olan açık bir dalış varsa, ondan eş ve lider önerir.
+ * Eşi bu üye olan, suda duran dalışlardan en yenisi.
  *
  * Karacı ikiliyi arka arkaya giriyor: Egemen'in kaydına eş olarak Metin
- * yazıldıysa, sıra Metin'e geldiğinde eşi Egemen olsun — lider de aynı
- * dalıştan gelsin. Buddy yönsüz olduğu için bu sadece bir öneri; alanlar
- * her zaman değiştirilebilir.
+ * yazıldıysa, sıra Metin'e geldiğinde eş, lider ve giriş saati bu dalıştan
+ * öneriliyor. Buddy yönsüz olduğu için hepsi sadece öneri; alanlar her
+ * zaman değiştirilebilir.
  */
-function findPairing(
+function findPartnerDive(
   memberId: string,
   openDives: OpenDive[],
-): { buddy: MemberOption; leader: MemberOption | null } | null {
+): OpenDive | null {
   const latest = openDives
     .filter((dive) => dive.buddyId === memberId && dive.memberId !== memberId)
     .sort(
@@ -47,15 +48,7 @@ function findPairing(
         new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime(),
     )[0];
 
-  if (!latest) return null;
-
-  return {
-    buddy: { id: latest.memberId, name: latest.memberName },
-    leader:
-      latest.leaderId && latest.leaderName
-        ? { id: latest.leaderId, name: latest.leaderName }
-        : null,
-  };
+  return latest ?? null;
 }
 
 /** Kuyrukta bekleyen dalış girişleri de suda sayılır. */
@@ -94,6 +87,9 @@ export function StartDiveForm({
   const [member, setMember] = useState<MemberOption | null>(null);
   const [buddy, setBuddy] = useState<MemberOption | null>(null);
   const [leader, setLeader] = useState<MemberOption | null>(null);
+  // Eşi bu kişi olan açık dalış. Giriş saatini oradan almayı önermek için
+  // seçimden sonra da elde tutuluyor.
+  const [partnerDive, setPartnerDive] = useState<OpenDive | null>(null);
 
   // Geçmişi olmayan üyede kulüpteki en yaygın kurulum varsayılan.
   // Üye seçilince bu, kişinin son kullandığı tüple değişiyor.
@@ -157,14 +153,19 @@ export function StartDiveForm({
   async function handleMemberSelect(next: MemberOption | null) {
     setMember(next);
     setError(null);
+    setPartnerDive(null);
     if (!next) return;
 
     // Eşi bu kişi olan açık bir dalış varsa eş ve lider kendiliğinden
     // dolsun. Karacı elle doldurduysa üzerine yazmıyoruz.
-    const pairing = findPairing(next.id, [...openDives, ...queuedDives]);
-    if (pairing) {
-      if (!buddy) setBuddy(pairing.buddy);
-      if (!leader && pairing.leader) setLeader(pairing.leader);
+    const partner = findPartnerDive(next.id, [...openDives, ...queuedDives]);
+    setPartnerDive(partner);
+
+    if (partner) {
+      if (!buddy) setBuddy({ id: partner.memberId, name: partner.memberName });
+      if (!leader && partner.leaderId && partner.leaderName) {
+        setLeader({ id: partner.leaderId, name: partner.leaderName });
+      }
     }
 
     // Son kullanılan tüp seçili gelsin.
@@ -328,6 +329,25 @@ export function StartDiveForm({
         onChange={entryTime.onChange}
         onNow={entryTime.reset}
       />
+
+      {/* Eşi zaten suda ama bu kişininki henüz açılmamış: ikisi birlikte
+          suya girdiyse saat de aynı olsun, sayaçlar birlikte aksın. Kendi
+          dalışı da açıksa bu kutu çıkmıyor — yukarıdaki uyarı yeter. */}
+      {partnerDive && !openDiveId && (
+        <div className="rounded-lg bg-secondary px-4 py-3 text-sm text-secondary-foreground">
+          <p>
+            <span className="font-medium">{partnerDive.memberName}</span> suda.
+            Giriş saati: {formatClock(partnerDive.entryTime)}
+          </p>
+          <button
+            type="button"
+            onClick={() => entryTime.setAt(new Date(partnerDive.entryTime))}
+            className="mt-1 font-medium text-primary underline underline-offset-4"
+          >
+            Aynı saati kullan
+          </button>
+        </div>
+      )}
 
       <MemberSearch
         id="buddy"
