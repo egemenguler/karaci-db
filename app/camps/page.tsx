@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CampList } from "@/components/camp-list";
+import { ChangeCamp } from "@/components/change-camp";
 import { Button } from "@/components/ui/button";
 import { createServerSupabase } from "@/lib/supabase-server";
 
@@ -32,6 +33,12 @@ export default async function CampsPage() {
           <Link href="/camps/new">Yeni kamp</Link>
         </Button>
       </div>
+
+      <ChangeCamp
+        camps={(camps ?? [])
+          .filter((camp) => camp.is_active)
+          .map((camp) => ({ id: camp.id, name: camp.name, year: camp.year }))}
+      />
 
       <CampList camps={camps ?? []} />
     </div>
