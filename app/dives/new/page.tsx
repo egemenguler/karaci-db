@@ -7,7 +7,7 @@
 // kamp aktifse o kullanılır; birden fazlaysa kamp sorulur.
 
 import Link from "next/link";
-import { StartDiveForm } from "@/components/start-dive-form";
+import { StartDiveForm, type OpenDive } from "@/components/start-dive-form";
 import { createServerSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -56,14 +56,32 @@ export default async function NewDivePage({
       .select("id, name")
       .is("deleted_at", null)
       .order("name", { ascending: true }),
-    supabase.from("active_dive").select("id, member_id").eq("camp_id", camp.id),
+    supabase
+      .from("active_dive")
+      .select(
+        "id, member_id, member_name, buddy_id, leader_id, leader_name, entry_time",
+      )
+      .eq("camp_id", camp.id),
   ]);
 
-  // Aynı üyenin ikinci açık dalışında uyarı gösterebilmek için.
-  const openDiveByMember: Record<string, string> = {};
-  for (const dive of openDives ?? []) {
-    if (dive.member_id && dive.id) openDiveByMember[dive.member_id] = dive.id;
-  }
+  // Suda duran dalışlar. Form bunları iki yerde kullanıyor: aynı üyenin
+  // ikinci açık dalışında uyarı, ve eşi bu kişi olan bir dalış varsa eş
+  // ile lideri kendiliğinden doldurmak.
+  const openDiveList: OpenDive[] = (openDives ?? []).flatMap((dive) =>
+    dive.id && dive.member_id && dive.entry_time
+      ? [
+          {
+            diveId: dive.id,
+            memberId: dive.member_id,
+            memberName: dive.member_name ?? "—",
+            buddyId: dive.buddy_id,
+            leaderId: dive.leader_id,
+            leaderName: dive.leader_name,
+            entryTime: dive.entry_time,
+          },
+        ]
+      : [],
+  );
 
   // Server Component istek başına bir kez render ediliyor; saati burada
   // okumak güvenli. Form bunu tarayıcının saat diliminde yorumluyor.
@@ -82,7 +100,7 @@ export default async function NewDivePage({
       <StartDiveForm
         campId={camp.id}
         members={members ?? []}
-        openDiveByMember={openDiveByMember}
+        openDives={openDiveList}
         serverNow={serverNow}
       />
 

@@ -11,22 +11,82 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Database } from "@/lib/database.types";
-import { enqueue, flush } from "@/lib/outbox";
+import { enqueue, flush, getAll, type OutboxItem } from "@/lib/outbox";
 import { supabase } from "@/lib/supabase-client";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/time";
 
 type TankMaterial = Database["public"]["Enums"]["tank_material"];
 
+/** Suda duran bir dalışın, eş önerisi için gereken kadarı. */
+export type OpenDive = {
+  diveId: string;
+  memberId: string;
+  memberName: string;
+  buddyId: string | null;
+  leaderId: string | null;
+  leaderName: string | null;
+  entryTime: string;
+};
+
+/**
+ * Eşi bu üye olan açık bir dalış varsa, ondan eş ve lider önerir.
+ *
+ * Karacı ikiliyi arka arkaya giriyor: Egemen'in kaydına eş olarak Metin
+ * yazıldıysa, sıra Metin'e geldiğinde eşi Egemen olsun — lider de aynı
+ * dalıştan gelsin. Buddy yönsüz olduğu için bu sadece bir öneri; alanlar
+ * her zaman değiştirilebilir.
+ */
+function findPairing(
+  memberId: string,
+  openDives: OpenDive[],
+): { buddy: MemberOption; leader: MemberOption | null } | null {
+  const latest = openDives
+    .filter((dive) => dive.buddyId === memberId && dive.memberId !== memberId)
+    .sort(
+      (a, b) =>
+        new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime(),
+    )[0];
+
+  if (!latest) return null;
+
+  return {
+    buddy: { id: latest.memberId, name: latest.memberName },
+    leader:
+      latest.leaderId && latest.leaderName
+        ? { id: latest.leaderId, name: latest.leaderName }
+        : null,
+  };
+}
+
+/** Kuyrukta bekleyen dalış girişleri de suda sayılır. */
+function queuedOpenDives(queue: OutboxItem[]): OpenDive[] {
+  return queue.flatMap((item) =>
+    item.kind === "dive_entry"
+      ? [
+          {
+            diveId: item.diveId,
+            memberId: item.payload.member_id,
+            memberName: item.display.memberName,
+            buddyId: item.payload.buddy_id ?? null,
+            leaderId: item.payload.leader_id ?? null,
+            leaderName: item.display.leaderName,
+            entryTime: item.payload.entry_time,
+          },
+        ]
+      : [],
+  );
+}
+
 export function StartDiveForm({
   campId,
   members,
-  openDiveByMember,
+  openDives,
   serverNow,
 }: {
   campId: string;
   members: MemberOption[];
-  /** üye id → o üyenin açık dalışının id'si */
-  openDiveByMember: Record<string, string>;
+  /** kampta suda duran dalışlar; hem uyarı hem eş önerisi için */
+  openDives: OpenDive[];
   serverNow: number;
 }) {
   const router = useRouter();
@@ -50,6 +110,21 @@ export function StartDiveForm({
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Çevrimdışıyken az önce girilen dalış henüz sunucuda yok; eş önerisi
+  // için kuyruğa da bakıyoruz. Tek seferlik okuma yetiyor: form açıkken
+  // kuyruğa yeni dalış girmiyor.
+  const [queuedDives, setQueuedDives] = useState<OpenDive[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    getAll().then((items) => {
+      if (alive) setQueuedDives(queuedOpenDives(items));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Üye ya da tüp değişince, kişinin aynı kurulumla yaptığı son dalışın
   // ağırlığı forma dolar. Tek yerde durduğu için hangi alanın önce
@@ -84,6 +159,14 @@ export function StartDiveForm({
     setMember(next);
     setError(null);
     if (!next) return;
+
+    // Eşi bu kişi olan açık bir dalış varsa eş ve lider kendiliğinden
+    // dolsun. Karacı elle doldurduysa üzerine yazmıyoruz.
+    const pairing = findPairing(next.id, [...openDives, ...queuedDives]);
+    if (pairing) {
+      if (!buddy) setBuddy(pairing.buddy);
+      if (!leader && pairing.leader) setLeader(pairing.leader);
+    }
 
     // Son kullanılan tüp seçili gelsin.
     const { data: last } = await supabase
@@ -170,7 +253,11 @@ export function StartDiveForm({
     router.refresh();
   }
 
-  const openDiveId = member ? openDiveByMember[member.id] : undefined;
+  // Sadece sunucudaki dalışlar: "o dalışı kapat" bağlantısı gerçek bir
+  // kayda gitmeli, kuyrukta bekleyen bir dalışın sayfası henüz yok.
+  const openDiveId = member
+    ? openDives.find((dive) => dive.memberId === member.id)?.diveId
+    : undefined;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
