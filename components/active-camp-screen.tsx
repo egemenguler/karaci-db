@@ -90,27 +90,27 @@ export function ActiveCampScreen({
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Suda kim var</h1>
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             {selected.name} · {selected.year}
           </p>
-          {camps.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setChanging(true)}
-              className="shrink-0 text-sm font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Kampı değiştir
-            </button>
-          )}
+          <Button asChild className="shrink-0">
+            <Link href={`/dives/new?camp=${selected.id}`}>Dalış Başlat</Link>
+          </Button>
         </div>
       </div>
 
       <WaterList dives={campDives} serverNow={serverNow} />
 
-      <Button asChild className="h-14 w-full text-base">
-        <Link href={`/dives/new?camp=${selected.id}`}>Dalış Başlat</Link>
-      </Button>
+      {camps.length > 1 && (
+        <button
+          type="button"
+          onClick={() => setChanging(true)}
+          className="block w-full text-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Kampı değiştir
+        </button>
+      )}
     </div>
   );
 }
