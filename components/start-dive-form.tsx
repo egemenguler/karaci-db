@@ -103,7 +103,8 @@ export function StartDiveForm({
   });
 
   const [weight, setWeight] = useState("");
-  const [startPressure, setStartPressure] = useState("");
+  // Kulüpte tüpler 200 bara basılıyor; eksik dolmuşsa üzerine yazılıyor.
+  const [startPressure, setStartPressure] = useState("200");
   const entryTime = useTimeField(serverNow);
 
   const [error, setError] = useState<string | null>(null);
