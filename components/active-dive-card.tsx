@@ -90,11 +90,16 @@ export function ActiveDiveCard({ card, now }: { card: WaterCard; now: number }) 
           {card.startPressure !== null && <> · {card.startPressure} bar</>}
         </div>
 
-        {(card.buddyName || card.leaderName) && (
-          <div className="mt-1.5 text-sm text-muted-foreground">
-            {card.buddyName && <>Eş: {card.buddyName}</>}
-            {card.buddyName && card.leaderName && " · "}
-            {card.leaderName && <>Lider: {card.leaderName}</>}
+        {/* Eş ve lider ayrı satırda: yan yana yazınca uzun isimlerde
+            satır ortada kırılıyor ve lider tek başına aşağı düşüyordu. */}
+        {card.buddyName && (
+          <div className="mt-1.5 truncate text-sm text-muted-foreground">
+            Eş: {card.buddyName}
+          </div>
+        )}
+        {card.leaderName && (
+          <div className="mt-0.5 truncate text-sm text-muted-foreground">
+            Lider: {card.leaderName}
           </div>
         )}
 
