@@ -5,12 +5,21 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { flush, getAll, retryAll, subscribe, type OutboxItem } from "@/lib/outbox";
 
+// Bağlantı varken bir kayıt saniyesinde gidiyor: kuyruğa düştüğü anda
+// banner'ı açmak, her dalış giriş/çıkışında ekranın üstünde bir anlık
+// "1 kayıt gönderilmedi" çakmasına yol açıyor. Bu süreyi geçmeden bir
+// kayıt sayılmıyor — hata verenler beklemeden görünür.
+const GRACE_MS = 3000;
+
 // Kuyruk boş değilse her ekranın üstünde durur. Aynı zamanda kuyruğu
 // deneyen yer: uygulama açılışında ve bağlantı geri geldiğinde.
 export function OutboxBanner() {
   const router = useRouter();
   const [queue, setQueue] = useState<OutboxItem[]>([]);
   const [busy, setBusy] = useState(false);
+  // Kayıtların bekleme süresini doldurup doldurmadığı buna göre ölçülüyor;
+  // süre dolunca aşağıdaki zamanlayıcı ilerletiyor.
+  const [now, setNow] = useState(() => Date.now());
   const previousCount = useRef(0);
 
   useEffect(() => {
@@ -42,9 +51,28 @@ export function OutboxBanner() {
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
-  if (queue.length === 0) return null;
+  // Kuyrukta bekleme süresini henüz doldurmamış kayıt varsa, en yakını
+  // dolduğunda bir kez daha bakılıyor. Süre dolmadan gönderilen kayıt
+  // kuyruktan düşüyor ve banner hiç açılmıyor.
+  useEffect(() => {
+    const remaining = queue
+      .filter((item) => item.status !== "error")
+      .map((item) => item.createdAt + GRACE_MS - Date.now())
+      .filter((ms) => ms > 0);
 
-  const failed = queue.filter((item) => item.status === "error").length;
+    if (remaining.length === 0) return;
+
+    const timer = setTimeout(() => setNow(Date.now()), Math.min(...remaining));
+    return () => clearTimeout(timer);
+  }, [queue, now]);
+
+  const visible = queue.filter(
+    (item) => item.status === "error" || now - item.createdAt >= GRACE_MS,
+  );
+
+  if (visible.length === 0) return null;
+
+  const failed = visible.filter((item) => item.status === "error").length;
 
   async function handleRetry() {
     setBusy(true);
@@ -56,7 +84,7 @@ export function OutboxBanner() {
     <div className="border-b bg-secondary">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-2.5 text-sm">
         <span className="flex-1 font-medium text-secondary-foreground">
-          {queue.length} kayıt gönderilmedi
+          {visible.length} kayıt gönderilmedi
           {failed > 0 && ` · ${failed} tanesi hata verdi`}
         </span>
         <button
