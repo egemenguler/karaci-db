@@ -131,7 +131,7 @@ export default async function MemberProfilePage({
 
         {dives.length === 0 ? (
           <div className="rounded-xl border border-dashed px-6 py-10 text-center">
-            <p className="font-medium">Henüz kapalı dalış yok</p>
+            <p className="font-medium">Henüz dalış yok</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border">

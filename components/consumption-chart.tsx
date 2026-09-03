@@ -42,7 +42,7 @@ export function ConsumptionChart({ dives }: { dives: DiveDetail[] }) {
   if (dives.length < 2) {
     return (
       <p className="text-sm text-muted-foreground">
-        Grafik için en az iki kapalı dalış gerekiyor.
+        Grafik için en az iki dalış gerekiyor.
       </p>
     );
   }
