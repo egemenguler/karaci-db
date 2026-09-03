@@ -5,6 +5,16 @@ import { Label } from "@/components/ui/label";
 import { toDateTimeLocalValue } from "@/lib/time";
 
 // Saat alanı: "şimdi" ile dolu gelir, gerekirse düzeltilir.
+//
+// appearance:none NEDEN GEREKLİ: iOS Safari datetime-local'i yerel bir
+// kontrol olarak çiziyor ve o kontrolün içsel genişliği width:100%'ü
+// ezerek alanı kapsayıcının sağ kenarından dışarı taşırıyor. Telefonda
+// alan diğerlerinden sonra bitiyor, masaüstü tarayıcılarda ise fark
+// görünmüyor — ölçüm masaüstünde sorunu göstermiyor.
+//
+// appearance:none onu sıradan bir metin alanı gibi yerleştiriyor;
+// dokununca yerel tarih/saat seçici yine açılıyor. -webkit- öneki elle
+// yazıldı, eski iOS sürümleri öneksiz halini tanımıyor.
 export function TimeInput({
   id,
   label,
@@ -37,7 +47,7 @@ export function TimeInput({
         type="datetime-local"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-14 text-lg md:text-lg"
+        className="h-14 appearance-none text-lg md:text-lg [-webkit-appearance:none]"
       />
       {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
     </div>

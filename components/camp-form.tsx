@@ -113,7 +113,8 @@ export function CampForm({
             type="date"
             value={startsOn}
             onChange={(event) => setStartsOn(event.target.value)}
-            className="h-12 text-base md:text-base"
+            // type="date" de iOS'ta yerel kontrol; bkz. TimeInput.
+            className="h-12 appearance-none text-base md:text-base [-webkit-appearance:none]"
           />
         </div>
         <div className="space-y-2">
@@ -125,7 +126,7 @@ export function CampForm({
             type="date"
             value={endsOn}
             onChange={(event) => setEndsOn(event.target.value)}
-            className="h-12 text-base md:text-base"
+            className="h-12 appearance-none text-base md:text-base [-webkit-appearance:none]"
           />
         </div>
       </div>
