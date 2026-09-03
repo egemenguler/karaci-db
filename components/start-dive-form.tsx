@@ -129,6 +129,11 @@ export function StartDiveForm({
   const [member, setMember] = useState<MemberOption | null>(null);
   const [buddy, setBuddy] = useState<MemberOption | null>(null);
   const [leader, setLeader] = useState<MemberOption | null>(null);
+  // Karacı eş/lider alanına elle dokundu mu. Dokunduysa dalgıç değişince
+  // otomatik doldurma o alanı artık ellemiyor; dokunulmamış alan ise yeni
+  // dalgıcın eşine göre yeniden doluyor (eşleşme yoksa temizleniyor).
+  const [buddyTouched, setBuddyTouched] = useState(false);
+  const [leaderTouched, setLeaderTouched] = useState(false);
   // Eşi bu kişi olan açık dalış. Giriş saatini oradan almayı önermek için
   // seçimden sonra da elde tutuluyor.
   const [partnerDive, setPartnerDive] = useState<OpenDive | null>(null);
@@ -216,8 +221,9 @@ export function StartDiveForm({
     setLedDive(null);
     if (!next) return;
 
-    // Eşi bu kişi olan açık bir dalış varsa eş ve lider kendiliğinden
-    // dolsun. Karacı elle doldurduysa üzerine yazmıyoruz.
+    // Eşi bu kişi olan açık bir dalıştan eş ve lider öneriliyor. Elle
+    // dokunulmamış alanlar yeni dalgıca göre yeniden hesaplanıyor:
+    // eşleşme varsa doluyor, yoksa (önceki dalgıçtan kalan) değer siliniyor.
     const partner = findPartnerDive(next.id, openDivePool);
     setPartnerDive(partner);
 
@@ -225,11 +231,17 @@ export function StartDiveForm({
     // dokunmuyor. Eş kutusu öncelikli, ikisi birden gösterilmiyor.
     setLedDive(findLedDive(next.id, openDivePool));
 
-    if (partner) {
-      if (!buddy) setBuddy({ id: partner.memberId, name: partner.memberName });
-      if (!leader && partner.leaderId && partner.leaderName) {
-        setLeader({ id: partner.leaderId, name: partner.leaderName });
-      }
+    if (!buddyTouched) {
+      setBuddy(
+        partner ? { id: partner.memberId, name: partner.memberName } : null,
+      );
+    }
+    if (!leaderTouched) {
+      setLeader(
+        partner?.leaderId && partner.leaderName
+          ? { id: partner.leaderId, name: partner.leaderName }
+          : null,
+      );
     }
 
     // Son kullanılan tüp seçili gelsin.
@@ -437,7 +449,10 @@ export function StartDiveForm({
         label="Eş"
         members={members}
         selected={buddy}
-        onSelect={setBuddy}
+        onSelect={(next) => {
+          setBuddy(next);
+          setBuddyTouched(true);
+        }}
         optional
       />
 
@@ -446,7 +461,10 @@ export function StartDiveForm({
         label="Lider"
         members={members}
         selected={leader}
-        onSelect={setLeader}
+        onSelect={(next) => {
+          setLeader(next);
+          setLeaderTouched(true);
+        }}
         optional
       />
 
