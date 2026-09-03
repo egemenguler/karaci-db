@@ -52,6 +52,24 @@ function findPartnerDive(
 }
 
 /**
+ * Lideri bu üye olan, suda duran dalışlardan en yenisi.
+ *
+ * Karacı bazen önce grubun liderini giriyor: liderlik yaptığı dalgıç
+ * zaten sudaysa, grup birlikte indiği için giriş saati o dalıştan
+ * öneriliyor. Eş eşleşmesi önceliklidir; bu yalnızca eş yokken görünüyor.
+ */
+function findLedDive(memberId: string, openDives: OpenDive[]): OpenDive | null {
+  const latest = openDives
+    .filter((dive) => dive.leaderId === memberId && dive.memberId !== memberId)
+    .sort(
+      (a, b) =>
+        new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime(),
+    )[0];
+
+  return latest ?? null;
+}
+
+/**
  * "Dalış Başlat"a basıldığında seçili gelecek dalgıç, ya da null.
  *
  * Karacı ikiliyi/üçlüyü arka arkaya giriyor: ilk kişinin kaydında eş
@@ -114,6 +132,8 @@ export function StartDiveForm({
   // Eşi bu kişi olan açık dalış. Giriş saatini oradan almayı önermek için
   // seçimden sonra da elde tutuluyor.
   const [partnerDive, setPartnerDive] = useState<OpenDive | null>(null);
+  // Lideri bu kişi olan açık dalış. Aynı amaçla; eş kutusu yoksa gösteriliyor.
+  const [ledDive, setLedDive] = useState<OpenDive | null>(null);
 
   // Geçmişi olmayan üyede kulüpteki en yaygın kurulum varsayılan.
   // Üye seçilince bu, kişinin son kullandığı tüple değişiyor.
@@ -193,12 +213,17 @@ export function StartDiveForm({
     setMember(next);
     setError(null);
     setPartnerDive(null);
+    setLedDive(null);
     if (!next) return;
 
     // Eşi bu kişi olan açık bir dalış varsa eş ve lider kendiliğinden
     // dolsun. Karacı elle doldurduysa üzerine yazmıyoruz.
     const partner = findPartnerDive(next.id, openDivePool);
     setPartnerDive(partner);
+
+    // Liderlik yaptığı biri suda mı — sadece saat önerisi için, alanlara
+    // dokunmuyor. Eş kutusu öncelikli, ikisi birden gösterilmiyor.
+    setLedDive(findLedDive(next.id, openDivePool));
 
     if (partner) {
       if (!buddy) setBuddy({ id: partner.memberId, name: partner.memberName });
@@ -381,6 +406,25 @@ export function StartDiveForm({
           <button
             type="button"
             onClick={() => entryTime.setAt(new Date(partnerDive.entryTime))}
+            className="mt-1 font-medium text-primary underline underline-offset-4"
+          >
+            Aynı saati kullan
+          </button>
+        </div>
+      )}
+
+      {/* Eşi değil ama liderlik yaptığı biri suda: grup birlikte indiyse
+          saat de aynı olsun. Eş kutusu çıktıysa bu çıkmıyor — eş öncelikli. */}
+      {!partnerDive && ledDive && !openDiveId && (
+        <div className="rounded-lg bg-secondary px-4 py-3 text-sm text-secondary-foreground">
+          <p>
+            Liderlik yaptığı{" "}
+            <span className="font-medium">{ledDive.memberName}</span> suda. Giriş
+            saati: {formatClock(ledDive.entryTime)}
+          </p>
+          <button
+            type="button"
+            onClick={() => entryTime.setAt(new Date(ledDive.entryTime))}
             className="mt-1 font-medium text-primary underline underline-offset-4"
           >
             Aynı saati kullan
