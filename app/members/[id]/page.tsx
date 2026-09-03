@@ -11,6 +11,7 @@ import { formatDuration, formatTank } from "@/lib/dive";
 import { formatSatNo } from "@/lib/member";
 import { formatDateTime } from "@/lib/time";
 import { createServerSupabase } from "@/lib/supabase-server";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -148,40 +149,69 @@ export default async function MemberProfilePage({
                 </tr>
               </thead>
               <tbody>
-                {dives.map((dive) => (
-                  // Satırın tamamı tıklanabilir olsun diye link, "stretched
-                  // link" tekniğiyle tüm satırı kaplıyor (tr'de relative,
-                  // linkin after'ı absolute + inset-0).
-                  <tr key={dive.id} className="relative border-b last:border-b-0 hover:bg-accent">
-                    <td className="whitespace-nowrap px-3 py-2">
-                      <Link href={`/dives/${dive.id}`} className="after:absolute after:inset-0">
+                {dives.map((dive) => {
+                  const href = `/dives/${dive.id}`;
+                  // Her hücre kendi linkini taşıyor. "Stretched link"
+                  // (tek link + after:absolute) bir <tr>'yi kaplamıyor:
+                  // tarayıcı <td>'yi containing block sayıyor, tıklanabilir
+                  // alan ilk hücrede kalıyordu.
+                  return (
+                    <tr
+                      key={dive.id}
+                      className="border-b last:border-b-0 hover:bg-accent"
+                    >
+                      <LogCell href={href}>
                         {formatDateTime(dive.entry_time)}
-                      </Link>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">
-                      {formatDuration(dive.duration_min ?? 0)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">
-                      {formatTank(dive.tank_size, dive.tank_material, dive.twin)}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">
-                      {dive.weight !== null ? `${dive.weight} kg` : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 tabular-nums">
-                      {dive.start_pressure ?? "—"} → {dive.end_pressure ?? "—"} bar
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">
-                      {dive.max_depth !== null ? `${dive.max_depth} m` : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">{dive.site ?? "—"}</td>
-                  </tr>
-                ))}
+                      </LogCell>
+                      <LogCell href={href}>
+                        {formatDuration(dive.duration_min ?? 0)}
+                      </LogCell>
+                      <LogCell href={href}>
+                        {formatTank(dive.tank_size, dive.tank_material, dive.twin)}
+                      </LogCell>
+                      <LogCell href={href}>
+                        {dive.weight !== null ? `${dive.weight} kg` : "—"}
+                      </LogCell>
+                      <LogCell href={href} className="tabular-nums">
+                        {dive.start_pressure ?? "—"} → {dive.end_pressure ?? "—"}{" "}
+                        bar
+                      </LogCell>
+                      <LogCell href={href}>
+                        {dive.max_depth !== null ? `${dive.max_depth} m` : "—"}
+                      </LogCell>
+                      <LogCell href={href}>{dive.site ?? "—"}</LogCell>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+// Log defteri satırındaki bir hücre: içeriği dalış detayına giden bir
+// linkle sarılı, dolayısıyla hücrenin tamamı tıklanabilir.
+function LogCell({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <td className="p-0">
+      <Link
+        href={href}
+        className={cn("block whitespace-nowrap px-3 py-2", className)}
+      >
+        {children}
+      </Link>
+    </td>
   );
 }
 
