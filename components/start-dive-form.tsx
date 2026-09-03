@@ -51,6 +51,30 @@ function findPartnerDive(
   return latest ?? null;
 }
 
+/**
+ * "Dalış Başlat"a basıldığında seçili gelecek dalgıç, ya da null.
+ *
+ * Karacı ikiliyi/üçlüyü arka arkaya giriyor: ilk kişinin kaydında eş
+ * (ve belki lider) yazılıdır ama onların henüz açık dalışı yoktur —
+ * sıradaki büyük ihtimalle onlardan biridir. Önce eşlere, sonra liderlere
+ * bakılıyor; suda zaten görünen kimse aday olmuyor. Birden çok aday varsa
+ * ilki alınıyor — hepsi sadece öneri, alan her zaman değiştirilebilir.
+ */
+function findAutofillMember(
+  openDives: OpenDive[],
+  members: MemberOption[],
+): MemberOption | null {
+  const inWater = new Set(openDives.map((dive) => dive.memberId));
+  const notInWater = (id: string | null): id is string =>
+    id !== null && !inWater.has(id);
+
+  const pickedId =
+    openDives.map((dive) => dive.buddyId).find(notInWater) ??
+    openDives.map((dive) => dive.leaderId).find(notInWater);
+
+  return pickedId ? (members.find((m) => m.id === pickedId) ?? null) : null;
+}
+
 /** Kuyrukta bekleyen dalış girişleri de suda sayılır. */
 function queuedOpenDives(queue: OutboxItem[]): OpenDive[] {
   return queue.flatMap((item) =>
@@ -114,11 +138,21 @@ export function StartDiveForm({
   useEffect(() => {
     let alive = true;
     getAll().then((items) => {
-      if (alive) setQueuedDives(queuedOpenDives(items));
+      if (!alive) return;
+      const queued = queuedOpenDives(items);
+      setQueuedDives(queued);
+
+      // Sıradaki dalgıcı tahmin edip seçili getiriyoruz. Kuyruk henüz
+      // state'e yazılmadığı için birleşik listeyi elden geçiriyoruz.
+      const pool = [...openDives, ...queued];
+      const candidate = findAutofillMember(pool, members);
+      if (candidate) void handleMemberSelect(candidate, pool);
     });
     return () => {
       alive = false;
     };
+    // Sadece ilk açılışta çalışır; sonraki seçimleri karacı yapıyor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Üye ya da tüp değişince, kişinin aynı kurulumla yaptığı son dalışın
@@ -150,7 +184,12 @@ export function StartDiveForm({
     };
   }, [member, tank.size, tank.material]);
 
-  async function handleMemberSelect(next: MemberOption | null) {
+  async function handleMemberSelect(
+    next: MemberOption | null,
+    // İlk açılıştaki otomatik seçim, kuyruk state'e yazılmadan önce eldeki
+    // birleşik listeyle çağırıyor; normal seçimde varsayılan yeterli.
+    openDivePool: OpenDive[] = [...openDives, ...queuedDives],
+  ) {
     setMember(next);
     setError(null);
     setPartnerDive(null);
@@ -158,7 +197,7 @@ export function StartDiveForm({
 
     // Eşi bu kişi olan açık bir dalış varsa eş ve lider kendiliğinden
     // dolsun. Karacı elle doldurduysa üzerine yazmıyoruz.
-    const partner = findPartnerDive(next.id, [...openDives, ...queuedDives]);
+    const partner = findPartnerDive(next.id, openDivePool);
     setPartnerDive(partner);
 
     if (partner) {
