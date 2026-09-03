@@ -44,9 +44,9 @@ export function ExitDiveForm({
       setError("Çıkış havası geçerli bir sayı olmalı.");
       return;
     }
-    if (pressure > startPressure) {
+    if (pressure >= startPressure) {
       setError(
-        `Çıkış havası giriş havasından (${startPressure} bar) büyük olamaz.`,
+        `Çıkış havası giriş havasından (${startPressure} bar) düşük olmalı.`,
       );
       return;
     }
