@@ -1,9 +1,7 @@
 // Üye listesi. Arama client tarafında — birkaç yüz kayıt, sunucuya
 // her tuşta gitmeye değmez.
 
-import Link from "next/link";
 import { MemberList } from "@/components/member-list";
-import { Button } from "@/components/ui/button";
 import { createServerSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -28,12 +26,7 @@ export default async function MembersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Üyeler</h1>
-        <Button asChild>
-          <Link href="/members/new">Yeni üye</Link>
-        </Button>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-tight">Üyeler</h1>
 
       <MemberList members={members ?? []} />
     </div>
